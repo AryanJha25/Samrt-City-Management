@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Parking Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f4f6f8; }
+        h1 { color: #2c3e50; }
+        .spot {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .occupied { color: #e74c3c; font-weight: bold; }
+        .vacant { color: #27ae60; font-weight: bold; }
+        form input, form select {
+            padding: 5px;
+            margin: 5px 0;
+            width: 100%;
+        }
+        form button {
+            padding: 10px;
+            background: #3498db;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        .section {
+            margin-top: 40px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>🚗 Smart Parking Dashboard</h1>
+
+    <!-- Sensor Section -->
+    <div class="section">
+        <h2>Live Sensor Status</h2>
+        <div id="sensor-container"></div>
+    </div>
+
+    <!-- Recommendation -->
+    <div class="section">
+        <h2>🎯 Recommended Parking Spot</h2>
+        <p id="recommendation">Loading...</p>
+    </div>
+
+    <!-- Prediction Form -->
+    <div class="section">
+        <h2>📊 Predict Occupied Spaces</h2>
+        <form id="predict-form">
+            <label>Hour (0–23):</label>
+            <input type="number" name="hour" required min="0" max="23">
+            <label>Day of Week (0=Mon, 6=Sun):</label>
+            <input type="number" name="day_of_week" required min="0" max="6">
+            <label>Is Holiday (0 or 1):</label>
+            <input type="number" name="is_holiday" required min="0" max="1">
+            <label>Temperature (°C):</label>
+            <input type="number" name="temperature" step="0.1" required>
+            <button type="submit">Predict</button>
+        </form>
+        <p id="prediction-result"></p>
+    </div>
+
+    <!-- Chart Section -->
+    <div class="section">
+        <h2>📈 Sample Occupancy Chart</h2>
+        <canvas id="occupancyChart" width="600" height="300"></canvas>
+    </div>
+
+    <script>
+        // Fetch real-time sensor data
+        function fetchSensorData() {
+            fetch('/api/sensor')
+                .then(res => res.json())
+                .then(data => {
+                    const container = document.getElementById('sensor-container');
+                    container.innerHTML = '';
+                    for (const [location, status] of Object.entries(data)) {
+                        const div = document.createElement('div');
+                        div.className = 'spot';
+                        div.innerHTML = `<strong>${location.replace('_', ' ').toUpperCase()}:</strong> 
+                                         <span class="${status}">${status.toUpperCase()}</span>`;
+                        container.appendChild(div);
+                    }
+                });
+        }
+
+        // Get recommended spot
+        function fetchRecommendation() {
+            fetch('/recommend')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('recommendation').innerText = data.recommended_parking.toUpperCase();
+                });
+        }
+
+        // Predict form handler
+        document.getElementById('predict-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const jsonData = {};
+            formData.forEach((v, k) => jsonData[k] = parseFloat(v));
+            fetch('/predict', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(jsonData)
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('prediction-result').innerText = 
+                    `Predicted Occupied Spaces: ${data.predicted_occupied_spaces}`;
+            });
+        });
+
+        // Sample chart data (dummy)
+        const ctx = document.getElementById('occupancyChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['00h', '04h', '08h', '12h', '16h', '20h'],
+                datasets: [{
+                    label: 'Predicted Occupancy',
+                    data: [20, 35, 70, 80, 50, 30],
+                    borderColor: '#2980b9',
+                    fill: false
+                }]
+            },
+            options: {
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+
+        // Initialize
+        fetchSensorData();
+        fetchRecommendation();
+        setInterval(fetchSensorData, 5000);
+        setInterval(fetchRecommendation, 10000);
+    </script>
+</body>
+</html>

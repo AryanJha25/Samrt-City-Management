@@ -1,0 +1,8 @@
+opencv-python
+torch
+numpy
+easyocr
+ultralytics
+lap
+cython_bbox
+-e git+https://github.com/roboflow/supervision.git#egg=supervision
